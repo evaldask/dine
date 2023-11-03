@@ -2,7 +2,7 @@ from enum import Enum
 from typing import NamedTuple
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class Category(Enum):
@@ -23,7 +23,7 @@ class Item(NamedTuple):
 class Order(BaseModel):
   date: datetime
   value: float
-  email: str
+  email: EmailStr
   items: list[Item]
   discount_code: str | None = None
   discount_rate: float = 0.0
