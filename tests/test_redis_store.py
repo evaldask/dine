@@ -2,6 +2,7 @@ from datetime import datetime
 from itertools import product
 
 import pytest
+from fakeredis import aioredis
 
 from dine import RedisStore, Entity
 from .models import Order, Item, Category
@@ -65,6 +66,8 @@ async def test_redis_upload():
   )
 
   store = RedisStore()
+  store.redis = aioredis.FakeRedis()
+
   await store.put([Entity("test:12345", value=obj1), Entity("test:54321", value=obj2)])
   res = await store.retrieve(
     [
@@ -94,6 +97,8 @@ async def test_partial_operations():
   )
 
   store = RedisStore()
+  store.redis = aioredis.FakeRedis()
+
   await store.put([Entity("test:12345", value=obj)])
   await store.put(
     [
