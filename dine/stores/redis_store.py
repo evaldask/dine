@@ -3,6 +3,7 @@ from typing import Any, get_origin
 import orjson
 import xxhash
 from pydantic import BaseModel, RootModel
+from pydantic_core import PydanticUndefined
 import redis.asyncio as redis
 
 from dine.structs import Entity
@@ -64,6 +65,20 @@ class RedisStore:
         converted.append(RedisStore.decode(res, item.instance))
 
     return converted
+
+  async def remove(self, items: list[Entity]):
+    pipe = self.redis.pipeline()
+    for item in items:
+      hashed_key = RedisStore.hash_entity(item.id, item._name, item._version)
+      if item._partial:
+        if item.instance.model_fields[item.field].default == PydanticUndefined:
+          raise ValueError("Deleting a partial field that do not have a default value.")
+        hashed_field = RedisStore.hash_value(item.field, FIELD_HASH_LENGTH)
+        pipe.hdel(hashed_key, hashed_field)
+      else:
+        pipe.delete(hashed_key)
+
+    await pipe.execute()
 
   @staticmethod
   def hash_entity(entity_id: str, dtype: str, version: str) -> bytes:
@@ -138,7 +153,6 @@ def _field_decode(value, annotation):
     return annotation(value)
 
   if get_origin(annotation) in (list, tuple, dict, set):
-    print(value)
     return orjson.loads(value)
 
   return value.decode()

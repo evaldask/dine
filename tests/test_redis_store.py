@@ -136,3 +136,41 @@ async def test_partial_operations():
     email="other@email.com",
     items=[Item(category=Category.VEGETABLES, price=0.11, units=50)],
   )
+
+
+@pytest.mark.asyncio
+async def test_redis_delete():
+  obj = Order(
+    date=datetime(2023, 1, 1, 10, 0, 0),
+    value=12.34,
+    email="buyer@good.store",
+    items=[
+      Item(category=Category.DAIRY, price=1.29, units=1),
+      Item(category=Category.BAKERY, price=0.49, units=3),
+    ],
+    discount_code="DISCOUNT",
+    discount_rate=0.1,
+  )
+
+  store = RedisStore()
+  store.redis = aioredis.FakeRedis()
+
+  await store.put([Entity("test:12345", value=obj)])
+  await store.remove([Entity(id="test:12345", instance=Order)])
+  results = await store.retrieve([Entity(id="test:12345", instance=Order)])
+  assert results[0] is None
+
+  await store.put([Entity("test:12345", value=obj)])
+  with pytest.raises(ValueError):
+    await store.remove([Entity(id="test:12345", instance=Order, field="email")])
+
+  await store.remove(
+    [
+      Entity(id="test:12345", instance=Order, field="discount_code"),
+      Entity(id="test:12345", instance=Order, field="discount_rate"),
+    ]
+  )
+
+  results = await store.retrieve([Entity(id="test:12345", instance=Order)])
+  assert results[0].discount_code is None
+  assert results[0].discount_rate == 0.0
